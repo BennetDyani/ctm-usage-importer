@@ -38,7 +38,10 @@ export async function POST(request: Request): Promise<Response> {
     }
     if (err instanceof LlmUnavailableError) {
       console.error('[agent]', err.message)
-      return json({ error: 'agent_unavailable', message: "The language model didn't answer in time. Try again in a moment." }, 502)
+      // In a single-provider test run, say why (e.g. "gemini:gemini-3.8-flash HTTP 429 quota exceeded").
+      // Provider error text never contains our keys.
+      const detail = v.only ? err.message.slice(0, 300) : undefined
+      return json({ error: 'agent_unavailable', message: "The language model didn't answer in time. Try again in a moment.", detail }, 502)
     }
     return failure(err, 'agent')
   }
