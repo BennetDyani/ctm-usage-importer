@@ -44,10 +44,5 @@ export function summarise(customer: Customer, metric: Metric): Summary {
   return summaryFromSeries(combined)
 }
 
-/** The tempting wrong answer: each environment's own 4th-highest day, added together. */
-export function sumOfPerEnvFourths(envs: string[], days: CombinedDay[]): number {
-  return envs.reduce((sum, env) => {
-    const vals = days.map((d) => d.byEnv[env] ?? 0).sort((a, b) => b - a)
-    return sum + (vals[3] ?? 0)
-  }, 0)
-}
+// The wrong method lives in lib/shared so the agent uses the identical calculation.
+export { sumOfPerEnvFourths } from '../../lib/shared/ranking'

@@ -1,6 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
+  "functions": {
+    "api/agent.ts": { "maxDuration": 60 }
+  },
   "headers": [
     {
       "source": "/(.*)",

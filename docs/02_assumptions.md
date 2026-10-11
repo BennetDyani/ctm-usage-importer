@@ -22,5 +22,6 @@ Where the brief is silent or contradicts itself, we make a decision, write it do
 | A16 | Derived files (`_total`, `most_active_dates`, PDFs, `reports.zip`) | Not uploaded. Used only to check our calculations. | We recalculate them. Storing BMC's derived numbers would create two sources of truth. | — |
 | A17 | Time zone | Dates are calendar dates with no time, stored as `date`. | No times in the source. | — |
 | A18 | A metric that is 0 every day (e.g. BANK file transfers) | Report "no usage", not "4th highest 0 on <date>". The date is meaningless when every day ties at 0. | Seen when the SQL ran on the BANK data. | — |
+| A19 | Model provider keys | The demo runs on free-tier Groq and Gemini keys with BMC's sample files only. Production uses the organisation's own paid keys (paid data terms); switching provider is a settings change. | Free tiers may keep or review prompts; acceptable for sample data, not for real customer data. | Ask (which provider the organisation already approves) |
 
 > **Verified:** the SQL in `04_data_model.md` was run as written in PostgreSQL 16 against all 10 sample files. Its results matched every reference value in `01_data_profile.md`.
