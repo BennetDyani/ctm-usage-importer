@@ -2,7 +2,7 @@
 
 Imports Control-M usage exports, stores them exactly, combines environments per day, and reports the **4th highest daily value** against contracted values for Tasks, SEP and MIPS. Includes an analysis agent that answers questions from the stored data.
 
-**Stack:** React 19 + Vite + TypeScript on Vercel · Vercel serverless functions (`api/`) · Supabase Postgres · LLM via OpenRouter (server-side only)
+**Stack:** React 19 + Vite + TypeScript on Vercel · Vercel serverless functions (`api/`) · Supabase Postgres 17 · Docker (local database for tests) · LLM via OpenRouter (server-side only)
 
 ## Run locally (Windows PowerShell)
 
@@ -14,6 +14,35 @@ npx vercel dev       # front end + /api functions together (needs: npx vercel lo
 curl.exe http://localhost:3000/api/health
 ```
 
+## Database (Supabase Postgres, schema `ctm`)
+
+Migrations live in `db/migrations/` (001–007) and are applied in order. They are already applied to the Supabase project `ctm-usage-importer`.
+
+**Test the database locally with Docker** (needs Docker Desktop running):
+
+```powershell
+npm run db:up      # Postgres 17 in Docker on localhost:54322 (in-memory, clean every start)
+npm run db:test    # applies all migrations, loads every sample file, checks the known answers
+npm run db:down    # stop and delete it
+```
+
+`db:test` refuses to run against anything except localhost, because it drops and recreates schema `ctm`.
+
+**Give the two app roles passwords (once, in the Supabase SQL editor).** The migrations create them without passwords so no secret is ever in git. Generate two long random passwords (for example with a password manager), then run:
+
+```sql
+alter role ctm_loader with login password 'PASTE-GENERATED-PASSWORD-1';
+alter role ctm_reader with login password 'PASTE-GENERATED-PASSWORD-2';
+```
+
+Never paste these passwords into chat or commit them. They go only into Vercel environment variables and your git-ignored `.env.local`.
+
+| Role | Can do | Used by |
+|---|---|---|
+| `ctm_loader` | execute `load_file_set`, `log_rejected_batch`, `save_contract` only | `/api/upload`, `/api/contracts` |
+| `ctm_reader` | execute the 10 read functions only; read-only; 10 s timeout | report APIs and the agent |
+| `anon`, `authenticated` | nothing in `ctm`; the schema is not exposed by the REST API | — |
+
 ## Folder layout
 
 | Path | What lives there |
@@ -21,7 +50,8 @@ curl.exe http://localhost:3000/api/health
 | `src/` | React app (pages: Upload, Contracts, Report, Ask) |
 | `api/` | Vercel serverless functions — the only code that touches secrets |
 | `lib/` | Shared server logic, starting with the parser (`lib/parse`, Phase 1) + tests |
-| `db/migrations/`, `db/tests/` | SQL migrations and known-answer tests (Phase 2, 4) |
+| `db/migrations/`, `db/tests/` | SQL migrations and database integration tests (run with Docker) |
+| `docker-compose.yml` | Local Postgres 17 for `npm run db:test` (development only) |
 | `agent/` | Agent system prompt (Phase 7) |
 | `data/samples/` | Untouched sample uploads (BANK: Dev/Prod/UAT, DCS: PROD/QA) |
 | `data/reference/` | BMC's own `_total` files — used only to check our numbers |
@@ -45,8 +75,8 @@ curl.exe http://localhost:3000/api/health
 ## Progress
 
 - [x] Phase 0 — scaffold (Vite + React + TS, Vitest, `/api/health`, security headers, sample data)
-- [ ] Phase 1 — parser + unit tests
-- [ ] Phase 2 — database (migrations, roles)
+- [x] Phase 1 — parser + unit tests (`lib/parse`, 41 tests incl. match against BMC reference totals)
+- [x] Phase 2 — database (migrations 001–007 applied to Supabase, roles, Docker + 16 integration tests)
 - [ ] Phase 3 — upload API + page
 - [ ] Phase 4 — known-answer SQL tests
 - [ ] Phase 5 — contracts

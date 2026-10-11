@@ -60,6 +60,8 @@ parseFileSet({ file1, file2, addons? , declaredEnv }) => {
 
 ## Unit tests (Vitest), written before the upload route
 
+Built in Phase 1: `lib/parse/parse.test.ts` (41 tests). Beyond the 8 below, it covers exact values, BOM and CRLF, impossible dates, add-ons with commas, and a ground-truth check: parsed BANK Dev + Prod + UAT added per day equals BMC's own `_total` files on all 365 days. Header detection finds the `Date` column by name anywhere in the header row.
+
 1. Both sample sets parse with 0 errors. Row counts: 365 task rows and 730 endpoint rows per environment.
 2. `ALL_per_task_QA.csv` with `ALLPROD.csv` → `env_mismatch`.
 3. `Prod` typed in, file says `PROD` → accepted.
