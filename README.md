@@ -46,6 +46,7 @@ It checks the four compliance answers (348, 121,970, 181, 11,571) and the add-on
 | `/api/customers` | GET | `ctm_reader` | Customers with data, their environments and date range |
 | `/api/contracts?customerId=` | GET | `ctm_reader` | Saved contract, licensed and installed add-ons, and the current verdict per measure (from `compliance_summary`) |
 | `/api/contracts` | POST JSON | `ctm_loader` | `{ customerId, enteredBy, validFrom?, values: { TASKS, SEP, MIPS }, licensed: [...] }`. `null` = not contracted. 422 with every reason for bad input, 404 unknown customer. |
+| `/api/report?customerId=` | GET | `ctm_reader` | The whole Report page for one customer: verdict per measure (`compliance_summary`), 365 ranked days with each environment (`daily_series`), month-by-month busiest and average day (`monthly_trend`), add-ons, coverage and the saved contract. ~130 KB, ~16 KB compressed. |
 
 Database errors are reported specifically: wrong database username or password (503 `database_login_failed`), roles swapped or missing a grant (500 `database_permission`), database unreachable (503 `database_unavailable`).
 
@@ -84,7 +85,7 @@ Never paste these passwords into chat or commit them. They go only into Vercel e
 | Role | Can do | Used by |
 |---|---|---|
 | `ctm_loader` | execute `load_file_set`, `log_rejected_batch`, `save_contract` only | `/api/upload`, `/api/contracts` |
-| `ctm_reader` | execute the 10 read functions only; read-only; 10 s timeout | report APIs and the agent |
+| `ctm_reader` | execute the 10 read functions only; read-only; 10 s timeout | `/api/batches`, `/api/customers`, `/api/contracts` (GET), `/api/report`, and the agent (Phase 7) |
 | `anon`, `authenticated` | nothing in `ctm`; the schema is not exposed by the REST API | — |
 
 ## Folder layout
@@ -124,7 +125,7 @@ Never paste these passwords into chat or commit them. They go only into Vercel e
 - [x] Phase 3 — upload API + page (`/api/upload`, `/api/batches`, upload history, 10 end-to-end API tests)
 - [x] Phase 4 — known-answer SQL tests (`db/tests/known_answers.sql`: 20 read-only checks, runnable on Supabase; a test proves it fails on a 1-unit change)
 - [x] Phase 5 — contracts saved to the database (`/api/contracts`, `/api/customers`, verdict from the database, 8 integration tests + 4 validation tests)
-- [ ] Phase 6 — report
+- [x] Phase 6 — report on live data (`/api/report`; the browser does no ranking, it draws what SQL returns) + month-by-month bar chart (busiest day per month, average day tick, partial months marked); 6 integration tests incl. monthly trend vs daily series
 - [ ] Phase 7 — analysis agent + evals
 - [ ] Phase 8 — hardening
 - [ ] Phase 9 — diagram, README, video

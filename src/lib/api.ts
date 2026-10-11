@@ -79,3 +79,33 @@ export const saveContract = (body: ContractSave) =>
   call<ContractData & { status: 'saved' }>('/api/contracts', {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
   })
+
+// ---------------------------------------------------------------- report (Phase 6)
+export type ReportMetric = 'TASKS' | 'SEP' | 'FT_TASKS' | 'MFT_FILES'
+export type ComplianceStatus = 'not_enough_data' | 'no_usage' | 'no_contract' | 'over_contract' | 'within_contract'
+export interface MetricSummary {
+  daysWithData: number
+  peak: number | null
+  peakDate: string | null
+  fourthHighest: number | null
+  fourthDate: string | null
+  contracted: number | null
+  headroom: number | null
+  status: ComplianceStatus
+}
+export interface MonthRow { month: string; peak: number; peakDate: string; average: number; days: number }
+export interface ReportData {
+  customer: { id: number; name: string }
+  environments: string[]
+  window: { from: string | null; to: string | null }
+  contract: ContractData['contract']
+  metrics: Record<ReportMetric, {
+    summary: MetricSummary | null // null: no rows for this measure at all
+    days: { date: string; total: number; rank: number; byEnv: Record<string, number> }[]
+    monthly: MonthRow[]
+  }>
+  addons: { product: string; licensed: boolean; installedIn: string[] }[]
+  coverage: { environment: string; firstDay: string; lastDay: string; days: number; missingDays: number; zeroTaskDays: number; uploadedAt: string }[]
+}
+
+export const getReport = (customerId: number) => call<ReportData>(`/api/report?customerId=${customerId}`)

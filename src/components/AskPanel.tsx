@@ -38,7 +38,7 @@ export default function AskPanel({ customer, onClose }: { customer: string; onCl
       <div className="ask-backdrop" onClick={onClose} />
       <aside className="ask" role="dialog" aria-modal="true" aria-labelledby="ask-title">
         <header>
-          <h2 id="ask-title">Ask about {customer}</h2>
+          <h2 id="ask-title">Ask about {customer || 'this data'}</h2>
           <button className="icon-btn" onClick={onClose} aria-label="Close"><CloseIcon /></button>
         </header>
         <div className="ask-body" aria-live="polite">

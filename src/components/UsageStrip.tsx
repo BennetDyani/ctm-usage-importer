@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Customer, Summary } from '../lib/compliance'
+import type { Summary } from '../lib/compliance'
 import { fmt, fmtCompact, fmtDate, fmtDay } from '../lib/format'
 import { envColor } from '../lib/types'
 
 interface Props {
-  customer: Customer
+  envs: string[]
   summary: Summary
   unit: string
   contract?: number
@@ -20,7 +20,7 @@ function niceMax(v: number) {
 }
 
 /** 365 thin bars, one per day of combined usage. The 4th-highest day is drawn in ink and called out. */
-export default function UsageStrip({ customer, summary, unit, contract }: Props) {
+export default function UsageStrip({ envs, summary, unit, contract }: Props) {
   const ref = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(900)
   const [hover, setHover] = useState<number | null>(null)
@@ -143,9 +143,9 @@ export default function UsageStrip({ customer, summary, unit, contract }: Props)
       {h && (
         <div className="tooltip" style={{ left: tipLeft, top: 8 }} role="status">
           <strong>{fmtDate(h.date)}</strong>
-          {customer.envs.map((env) => (
+          {envs.map((env) => (
             <div className="row" key={env}>
-              <span><i className="env-dot" style={{ background: envColor(customer, env) }} />{env}</span>
+              <span><i className="env-dot" style={{ background: envColor(envs, env) }} />{env}</span>
               <span className="num">{fmt(h.byEnv[env] ?? 0)}</span>
             </div>
           ))}

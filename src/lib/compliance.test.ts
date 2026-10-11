@@ -3,6 +3,7 @@ import data from '../preview/sample-data.json'
 import { summarise, sumOfPerEnvFourths, type Customer } from './compliance'
 
 // Ground truth from docs/01_data_profile.md (verified against raw CSVs and SQL).
+// This is the independent second implementation: the live report uses SQL, these must agree.
 const customer = (name: string) => (data.customers as Customer[]).find((c) => c.name === name)!
 
 describe('combine-then-rank (4th highest)', () => {
@@ -24,7 +25,8 @@ describe('combine-then-rank (4th highest)', () => {
   })
 
   it('the wrong method overstates usage', () => {
-    expect(sumOfPerEnvFourths(customer('BANK'), 'sep')).toBe(361)
-    expect(sumOfPerEnvFourths(customer('BANK'), 'tasks')).toBe(133478)
+    const bank = customer('BANK')
+    expect(sumOfPerEnvFourths(bank.envs, summarise(bank, 'sep').days)).toBe(361)
+    expect(sumOfPerEnvFourths(bank.envs, summarise(bank, 'tasks').days)).toBe(133478)
   })
 })

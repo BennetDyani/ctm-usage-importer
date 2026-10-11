@@ -11,3 +11,9 @@ export const possessive = (name: string) => (name.endsWith('s') ? `${name}'` : `
 
 /** "Control-M for Databases" -> "Databases"; "Control-M Forecast" -> "Forecast". */
 export const productName = (p: string) => p.replace(/^Control-M (for )?/, '')
+
+/** Calendar days in the month of an ISO date ('2026-02-01' -> 28). */
+export function daysInMonth(iso: string) {
+  const d = new Date(`${iso}T00:00:00Z`)
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate()
+}

@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AlertIcon, CheckIcon, DotIcon } from '../components/Icons'
 import { envFromFileName, type Issue } from '../../lib/parse'
-import { recentBatches, uploadFileSet, type ApiResult, type Batch, type UploadOk, type UploadRejected } from '../lib/api'
+import { listCustomers, recentBatches, uploadFileSet, type ApiResult, type Batch, type UploadOk, type UploadRejected } from '../lib/api'
 import { checkFile, checkSet, sameEnv, type FileCheck, type Kind } from '../lib/fileCheck'
 import { fmt, fmtDate } from '../lib/format'
-import { CUSTOMERS } from '../lib/types'
 
 type Outcome =
   | { kind: 'local'; issues: Issue[] } // refused in the browser, nothing sent
@@ -23,6 +22,9 @@ export default function UploadPage() {
 
   const loadHistory = useCallback(() => { recentBatches(10).then(setHistory) }, [])
   useEffect(loadHistory, [loadHistory])
+  // Suggest the customers that already exist, so "Bank" and "BANK" never become two customers by accident.
+  const [known, setKnown] = useState<string[]>([])
+  useEffect(() => { listCustomers().then((r) => r.kind === 'ok' && setKnown(r.data.customers.map((c) => c.name))) }, [])
 
   const reset = () => setOutcome(null)
   const promptsDone = uploader.trim() && customer.trim() && env.trim()
@@ -74,7 +76,7 @@ export default function UploadPage() {
               <div className="field">
                 <label htmlFor="cust">Customer name</label>
                 <input id="cust" className="input" list="customers" value={customer} onChange={(e) => { setCustomer(e.target.value); reset() }} />
-                <datalist id="customers">{CUSTOMERS.map((c) => <option key={c.name} value={c.name} />)}</datalist>
+                <datalist id="customers">{known.map((n) => <option key={n} value={n} />)}</datalist>
               </div>
               <div className="field">
                 <label htmlFor="env">Environment</label>
