@@ -1,6 +1,6 @@
 // GET /api/batches?limit=20 — recent upload attempts (loaded, already loaded and refused), newest first.
-import { db } from '../lib/server/db'
-import { failure, json, methodNotAllowed } from '../lib/server/http'
+import { db } from '../lib/server/db.js'
+import { failure, json, methodNotAllowed } from '../lib/server/http.js'
 
 export async function GET(request: Request): Promise<Response> {
   const limit = Math.min(Math.max(Number(new URL(request.url).searchParams.get('limit')) || 20, 1), 100)

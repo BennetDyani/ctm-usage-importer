@@ -5,10 +5,10 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import postgres from 'postgres'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { GET as batches } from '../../api/batches'
-import { GET as uploadGet, POST as upload } from '../../api/upload'
-import { closeAll } from '../../lib/server/db'
-import { resetDatabase, roleUrls, TEST_URL } from './setup'
+import { GET as batches } from '../../api/batches.js'
+import { GET as uploadGet, POST as upload } from '../../api/upload.js'
+import { closeAll } from '../../lib/server/db.js'
+import { resetDatabase, roleUrls, TEST_URL } from './setup.js'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const read = (r: Response): Promise<any> => r.json()

@@ -3,10 +3,10 @@
 // the future folder importer AND the browser Upload page all run the same rules.
 //
 // All-or-nothing: if any error is found, `ok` is false and nothing should be stored.
-import { parseAddonsFile, type AddonRow } from './addons'
-import { parseEndpointsFile, parseTasksFile, type EndpointRow, type TaskRow } from './distributed'
-import { envFromFileName, sameEnv } from './fileName'
-import { err, warn, type Issue } from './issues'
+import { parseAddonsFile, type AddonRow } from './addons.js'
+import { parseEndpointsFile, parseTasksFile, type EndpointRow, type TaskRow } from './distributed.js'
+import { envFromFileName, sameEnv } from './fileName.js'
+import { err, warn, type Issue } from './issues.js'
 
 export const MAX_FILE_BYTES = 2 * 1024 * 1024
 
@@ -115,10 +115,10 @@ export function parseFileSet(input: FileSetInput): ParsedFileSet {
   }
 }
 
-export { parseTasksFile, parseEndpointsFile } from './distributed'
-export { parseAddonsFile } from './addons'
-export { envFromFileName, detectKind, sameEnv } from './fileName'
-export { decodeUtf8 } from './csv'
-export type { Issue, IssueCode, FileRole } from './issues'
-export type { TaskRow, EndpointRow } from './distributed'
-export type { AddonRow } from './addons'
+export { parseTasksFile, parseEndpointsFile } from './distributed.js'
+export { parseAddonsFile } from './addons.js'
+export { envFromFileName, detectKind, sameEnv } from './fileName.js'
+export { decodeUtf8 } from './csv.js'
+export type { Issue, IssueCode, FileRole } from './issues.js'
+export type { TaskRow, EndpointRow } from './distributed.js'
+export type { AddonRow } from './addons.js'

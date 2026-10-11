@@ -4,9 +4,9 @@
 //   line 3  header with a "Date" column (normally first)
 //   then    one row per day (File 2 has two rows per day, quirk Q1)
 // Columns are found by NAME, never by position.
-import { readLines } from './csv'
-import { err, warn, MAX_ISSUES_PER_FILE, type FileRole, type Issue } from './issues'
-import { parseCount, parseUsageDate } from './values'
+import { readLines } from './csv.js'
+import { err, warn, MAX_ISSUES_PER_FILE, type FileRole, type Issue } from './issues.js'
+import { parseCount, parseUsageDate } from './values.js'
 
 export interface ColumnSpec<K extends string> { header: string; key: K }
 

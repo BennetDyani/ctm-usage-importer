@@ -81,7 +81,7 @@ Never paste these passwords into chat or commit them. They go only into Vercel e
 | Path | What lives there |
 |---|---|
 | `src/` | React app (pages: Upload, Contracts, Report, Ask) |
-| `api/` | Vercel serverless functions — the only code that touches secrets |
+| `api/` | Vercel serverless functions — the only code that touches secrets. Every file here is deployed as a function, so tests live in `tests/`. Server imports use `.js` extensions (Node ES modules). |
 | `lib/` | Shared server logic, starting with the parser (`lib/parse`, Phase 1) + tests |
 | `db/migrations/`, `db/tests/` | SQL migrations and database integration tests (run with Docker) |
 | `docker-compose.yml` | Local Postgres 17 for `npm run db:test` (development only) |

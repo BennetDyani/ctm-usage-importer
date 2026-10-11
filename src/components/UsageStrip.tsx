@@ -67,7 +67,7 @@ export default function UsageStrip({ customer, summary, unit, contract }: Props)
   }
 
   // Callout label for the 4th-highest day, kept inside the plot.
-  const calloutText = fourth ? `4th highest, ${fmtDay(fourth.date)}` : ''
+  const calloutText = fourth ? `4th busiest, ${fmtDay(fourth.date)}` : ''
   const calloutW = calloutText.length * 6.6
   const cx = fourthIndex >= 0 ? x(fourthIndex) + barW / 2 : 0
   const labelX = Math.min(Math.max(cx, PAD.left + calloutW / 2), width - PAD.right - calloutW / 2)
@@ -104,11 +104,14 @@ export default function UsageStrip({ customer, summary, unit, contract }: Props)
         ))}
 
         <g className="bars">
-          {days.map((d, i) => {
+          {[...days.keys()].sort((a, b) => Number(days[a].rank <= 4) - Number(days[b].rank <= 4)).map((i) => {
+            const d = days[i]
             const top = y(d.total)
             const cls = d.rank === 4 ? 'bar-fourth' : d.rank <= 3 ? 'bar-top' : 'bar-day'
+            // Highlighted days are drawn at least 3px wide (centred) so they stay visible among 365 bars.
+            const w = d.rank <= 4 ? Math.max(barW, 3) : barW
             return (
-              <rect key={d.date} className={cls} x={x(i)} y={top} width={barW}
+              <rect key={d.date} className={cls} x={x(i) + (barW - w) / 2} y={top} width={w}
                 height={Math.max(d.total > 0 ? 1 : 0, PAD.top + plotH - top)} rx={barW >= 4 ? 2 : 0}
                 style={{ ['--i' as string]: i }} />
             )

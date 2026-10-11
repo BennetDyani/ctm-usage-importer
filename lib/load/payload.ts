@@ -1,6 +1,6 @@
 // Builds the JSON that ctm.load_file_set(payload) expects (db/migrations/003) from a parsed,
 // error-free file set. Pure: the caller supplies checksums (node:crypto on the server).
-import type { FileSetInput, ParsedFileSet } from '../parse'
+import type { FileSetInput, ParsedFileSet } from '../parse/index.js'
 
 export interface LoadPayload {
   uploaderId: string
