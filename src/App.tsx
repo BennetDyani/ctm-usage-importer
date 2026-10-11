@@ -4,8 +4,7 @@ import { AskIcon, ContractIcon, MoonIcon, ReportIcon, SunIcon, UploadIcon } from
 import ContractsPage from './pages/ContractsPage'
 import ReportPage from './pages/ReportPage'
 import UploadPage from './pages/UploadPage'
-import { getContract, listCustomers } from './lib/api'
-import { CUSTOMERS, type Contract, type Page } from './lib/types'
+import type { Page } from './lib/types'
 
 type Theme = 'light' | 'dark'
 
@@ -25,8 +24,8 @@ function initialTheme(): Theme {
 
 export default function App() {
   const [page, setPage] = useState<Page>('report')
-  const [customerName, setCustomerName] = useState(CUSTOMERS[0].name)
-  const [contracts, setContracts] = useState<Record<string, Contract>>({})
+  // The customer picked on Report or Contracts; '' means "the first customer in the database".
+  const [customerName, setCustomerName] = useState('')
   const [askOpen, setAskOpen] = useState(false)
   const [theme, setTheme] = useState<Theme>(initialTheme)
 
@@ -35,29 +34,6 @@ export default function App() {
     try { localStorage.setItem('ctm-theme', theme) } catch { /* ignore */ }
   }, [theme])
 
-  // Saved contracts come from the database (Phase 5). The report itself moves to live data in Phase 6.
-  useEffect(() => {
-    let live = true
-    listCustomers().then(async (r) => {
-      if (r.kind !== 'ok') return
-      for (const c of r.data.customers) {
-        const d = await getContract(c.id)
-        if (!live || d.kind !== 'ok') continue
-        const k = d.data.contract
-        setContracts((all) => ({
-          ...all,
-          [c.name]: {
-            tasks: k.TASKS?.value, sep: k.SEP?.value, mips: k.MIPS?.value,
-            validFrom: k.TASKS?.validFrom ?? undefined,
-            licensed: d.data.addons.filter((a) => a.licensed).map((a) => a.product),
-          },
-        }))
-      }
-    })
-    return () => { live = false }
-  }, [])
-
-  const customer = CUSTOMERS.find((c) => c.name === customerName) ?? CUSTOMERS[0]
   const closeAsk = useCallback(() => setAskOpen(false), [])
 
   return (
@@ -76,7 +52,7 @@ export default function App() {
           <button className="nav-item" onClick={() => setAskOpen(true)}><AskIcon />Ask</button>
         </nav>
         <div className="rail-foot">
-          <p className="rail-note">Uploads and contracts are saved to the database. The report charts still use the bundled sample files until they are connected.</p>
+          <p className="rail-note">Every figure is read live from the database: uploads, contracts and the report.</p>
           <button className="ghost-btn" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}>
             {theme === 'dark' ? <SunIcon /> : <MoonIcon />}{theme === 'dark' ? 'Light' : 'Dark'}
@@ -86,17 +62,16 @@ export default function App() {
 
       <main className="main">
         {page === 'report' && (
-          <ReportPage customer={customer} onCustomer={setCustomerName} contract={contracts[customer.name]}
-            onEditContract={() => setPage('contracts')} onAsk={() => setAskOpen(true)} />
+          <ReportPage customerName={customerName} onCustomer={setCustomerName}
+            onEditContract={() => setPage('contracts')} onUpload={() => setPage('upload')} onAsk={() => setAskOpen(true)} />
         )}
         {page === 'upload' && <UploadPage />}
         {page === 'contracts' && (
-          <ContractsPage customerName={customer.name} onCustomer={setCustomerName}
-            onSaved={(name, c) => setContracts((all) => ({ ...all, [name]: c }))} onViewReport={() => setPage('report')} />
+          <ContractsPage customerName={customerName} onCustomer={setCustomerName} onViewReport={() => setPage('report')} />
         )}
       </main>
 
-      {askOpen && <AskPanel customer={customer.name} onClose={closeAsk} />}
+      {askOpen && <AskPanel customer={customerName} onClose={closeAsk} />}
     </div>
   )
 }

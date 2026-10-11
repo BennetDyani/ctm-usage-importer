@@ -5,12 +5,11 @@ import {
   type ApiResult, type ContractData, type CustomerRow, type MetricCode,
 } from '../lib/api'
 import { fmt, fmtDate, productName } from '../lib/format'
-import { CUSTOMERS, METRIC_LABEL, type Contract, type ContractMetric } from '../lib/types'
+import { METRIC_LABEL, type ContractMetric } from '../lib/types'
 
 interface Props {
   customerName: string
   onCustomer: (name: string) => void
-  onSaved: (name: string, c: Contract) => void // keeps the (preview) report in step until Phase 6
   onViewReport: () => void
 }
 
@@ -26,7 +25,7 @@ function rememberedId() {
   try { return localStorage.getItem(ID_KEY) ?? '' } catch { return '' }
 }
 
-export default function ContractsPage({ customerName, onCustomer, onSaved, onViewReport }: Props) {
+export default function ContractsPage({ customerName, onCustomer, onViewReport }: Props) {
   const [customers, setCustomers] = useState<ApiResult<{ customers: CustomerRow[] }> | null>(null)
   const [data, setData] = useState<ApiResult<ContractData> | null>(null)
   const [values, setValues] = useState<Record<ContractMetric, string>>({ tasks: '', sep: '', mips: '' })
@@ -80,10 +79,6 @@ export default function ContractsPage({ customerName, onCustomer, onSaved, onVie
     if (r.kind !== 'ok') return setResult({ ok: false, message: r.message })
     try { localStorage.setItem(ID_KEY, enteredBy.trim()) } catch { /* ignore */ }
     setData({ kind: 'ok', data: r.data })
-    onSaved(current.name, {
-      tasks: r.data.contract.TASKS?.value, sep: r.data.contract.SEP?.value, mips: r.data.contract.MIPS?.value,
-      validFrom: validFrom || undefined, licensed,
-    })
     setResult({ ok: true, message: 'Saved to the database.' })
   }
 
@@ -117,7 +112,7 @@ export default function ContractsPage({ customerName, onCustomer, onSaved, onVie
         <div className="field">
           <label htmlFor="c-customer">Customer</label>
           <select id="c-customer" className="select" value={current?.name ?? ''} onChange={(e) => onCustomer(e.target.value)} disabled={!customers}>
-            {(list.length ? list.map((c) => c.name) : CUSTOMERS.map((c) => c.name)).map((n) => <option key={n}>{n}</option>)}
+            {list.map((c) => <option key={c.id}>{c.name}</option>)}
           </select>
         </div>
         <div className="field">

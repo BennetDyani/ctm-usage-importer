@@ -20,6 +20,7 @@
   --bar-day: #cfd7df;
   --bar-top: #3d4c5e;
   --bar-fourth: #e39b0b;
+  --bar-month: #7a8899;
   --env-1: #2a78d6;
   --env-2: #eb6834;
   --env-3: #1baf7a;
@@ -54,6 +55,7 @@
     --bar-day: #2f3e50;
     --bar-top: #b4c1ce;
     --bar-fourth: #f2b33d;
+    --bar-month: #6f8093;
     --env-1: #3987e5;
     --env-2: #d95926;
     --env-3: #199e70;
@@ -77,6 +79,7 @@
   --bar-day: #2f3e50;
   --bar-top: #b4c1ce;
   --bar-fourth: #f2b33d;
+  --bar-month: #6f8093;
   --env-1: #3987e5;
   --env-2: #d95926;
   --env-3: #199e70;
@@ -188,14 +191,32 @@ table.data .r { text-align: right; }
 .strip .contract-label { fill: var(--ink-2); font-size: 12px; font-weight: 500; }
 .strip .callout-line { stroke: var(--ink); stroke-width: 1; }
 .strip .callout-text { fill: var(--ink); font-size: 12px; font-weight: 600; }
+/* Monthly trend (Phase 6) */
+.trend .month-bar { fill: var(--bar-month); transition: opacity 120ms; }
+.trend .month-bar.is-fourth { fill: var(--bar-fourth); }
+.trend .month-bar.is-partial { opacity: 0.4; }
+.trend .month-bar.is-fourth.is-partial { opacity: 0.75; } /* the 4th-busiest month must stay readable even when partial */
+.trend .is-hover .month-bar { stroke: var(--ink); stroke-width: 1.5; }
+.trend .avg-tick { stroke: var(--ink); stroke-width: 2; stroke-linecap: round; pointer-events: none; }
+.trend .bar-label { fill: var(--ink); font-size: 12px; font-weight: 600; }
+.trend .partial-note { font-size: 10.5px; }
+.trend .hit { fill: transparent; }
+.key-tick { display: inline-block; width: 14px; height: 2px; border-radius: 1px; background: var(--ink); }
+.key-bar.is-partial { opacity: 0.4; }
+.report-state { padding: 3rem 0; display: grid; gap: 0.75rem; justify-items: start; max-width: 56ch; }
+.report-state h2 { font-size: var(--step-2); font-weight: 600; }
+.report-state p { color: var(--ink-2); }
+.is-refreshing { opacity: 0.55; transition: opacity 150ms; pointer-events: none; }
 .strip .hover-line { stroke: var(--ink-2); stroke-width: 1; }
 .strip .bars rect { transform-box: fill-box; transform-origin: bottom; }
 @media (prefers-reduced-motion: no-preference) {
   .strip .bars rect { animation: rise 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: calc(var(--i) * 1.4ms); }
+  .trend .month-bar { animation: rise 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: calc(var(--i) * 30ms); transform-box: fill-box; transform-origin: bottom; }
   .strip .callout { animation: appear 300ms ease-out 640ms both; }
 }
 @keyframes rise { from { transform: scaleY(0); } }
 @keyframes appear { from { opacity: 0; } }
+.tooltip.trend-tip { width: 15rem; }
 .tooltip {
   position: absolute; pointer-events: none; z-index: 5; min-width: 11rem; padding: 0.6rem 0.75rem; border-radius: var(--radius-ctl);
   background: var(--sheet); border: 1px solid var(--hair-strong); box-shadow: 0 6px 20px -8px rgba(20, 34, 53, 0.35); font-size: var(--step--1);
