@@ -77,9 +77,11 @@ export function parseFileSet(input: FileSetInput): ParsedFileSet {
   }
 
   // 4. Contents.
-  const p1 = input.file1 && env1 ? parseTasksFile(input.file1.text) : undefined
-  const p2 = input.file2 && env2 ? parseEndpointsFile(input.file2.text) : undefined
-  const pa = input.addons && envA ? parseAddonsFile(input.addons.text) : undefined
+  // Content is only read when the name is right and the file isn't oversized (no point parsing junk).
+  const readable = (f?: InputFile) => !!f && f.size <= MAX_FILE_BYTES
+  const p1 = readable(input.file1) && env1 ? parseTasksFile(input.file1!.text) : undefined
+  const p2 = readable(input.file2) && env2 ? parseEndpointsFile(input.file2!.text) : undefined
+  const pa = readable(input.addons) && envA ? parseAddonsFile(input.addons!.text) : undefined
   issues.push(...(p1?.issues ?? []), ...(p2?.issues ?? []), ...(pa?.issues ?? []))
 
   // 5. Both files should cover the same days (warning only: stored and shown in the report).
