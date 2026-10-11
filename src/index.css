@@ -348,6 +348,7 @@ table.data.nowrap td, table.data.nowrap th { white-space: nowrap; }
 .msg { max-width: 90%; padding: 0.6rem 0.8rem; border-radius: 12px; font-size: var(--step--1); }
 .msg.user { align-self: flex-end; background: var(--ink); color: var(--sheet); border-bottom-right-radius: 4px; }
 .msg.bot { align-self: flex-start; background: var(--tint); border-bottom-left-radius: 4px; }
+.msg p { white-space: pre-line; } /* keep the model's line breaks */
 .msg p + p { margin-top: 0.4rem; }
 .msg-source { font-size: 0.75rem; color: var(--muted); border-top: 1px solid var(--hair); padding-top: 0.4rem; overflow-wrap: anywhere; }
 .msg-source span { font-weight: 600; }
