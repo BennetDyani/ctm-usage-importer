@@ -8,10 +8,10 @@
 // Refused  -> 422 { status: 'rejected', issues }  and the attempt is logged (log_rejected_batch)
 // Accepted -> 200 { status: 'loaded' | 'already_loaded', batchId, files, summary, warnings }
 import { createHash } from 'node:crypto'
-import { toLoadPayload } from '../lib/load/payload'
-import { decodeUtf8, MAX_FILE_BYTES, parseFileSet, type FileSetInput, type InputFile, type Issue } from '../lib/parse'
-import { db } from '../lib/server/db'
-import { failure, json, methodNotAllowed } from '../lib/server/http'
+import { toLoadPayload } from '../lib/load/payload.js'
+import { decodeUtf8, MAX_FILE_BYTES, parseFileSet, type FileSetInput, type InputFile, type Issue } from '../lib/parse/index.js'
+import { db } from '../lib/server/db.js'
+import { failure, json, methodNotAllowed } from '../lib/server/http.js'
 
 const MAX_BODY_BYTES = 4 * 1024 * 1024 // Vercel's request limit is 4.5 MB
 const sha256 = (text: string) => createHash('sha256').update(text, 'utf8').digest('hex')

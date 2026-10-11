@@ -3,8 +3,8 @@
 //   Control-M for Databases,Installed,Last job execution 20260617)
 // "Details" is free text and may itself contain commas, so everything after the
 // second comma is kept together, exactly as written (quirk Q5).
-import { readLines } from './csv'
-import { err, MAX_ISSUES_PER_FILE, type Issue } from './issues'
+import { readLines } from './csv.js'
+import { err, MAX_ISSUES_PER_FILE, type Issue } from './issues.js'
 
 export interface AddonRow { lineNo: number; product: string; installed: boolean; installedRaw: string; details: string }
 

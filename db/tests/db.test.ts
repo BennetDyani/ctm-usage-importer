@@ -9,9 +9,9 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import postgres from 'postgres'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { toLoadPayload } from '../../lib/load/payload'
-import { parseFileSet, type FileSetInput } from '../../lib/parse'
-import { resetDatabase, TEST_URL } from './setup'
+import { toLoadPayload } from '../../lib/load/payload.js'
+import { parseFileSet, type FileSetInput } from '../../lib/parse/index.js'
+import { resetDatabase, TEST_URL } from './setup.js'
 
 const url = TEST_URL
 

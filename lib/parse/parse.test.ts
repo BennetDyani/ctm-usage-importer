@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { decodeUtf8, detectKind, envFromFileName, parseEndpointsFile, parseFileSet, parseTasksFile, type FileSetInput } from './index'
-import { parseCount, parseUsageDate } from './values'
+import { decodeUtf8, detectKind, envFromFileName, parseEndpointsFile, parseFileSet, parseTasksFile, type FileSetInput } from './index.js'
+import { parseCount, parseUsageDate } from './values.js'
 
 const DATA = join(process.cwd(), 'data')
 const read = (...p: string[]) => readFileSync(join(DATA, ...p), 'utf8')

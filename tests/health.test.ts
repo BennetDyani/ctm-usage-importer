@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { GET } from './health'
+import { GET } from '../api/health.js'
 
 describe('GET /api/health', () => {
   it('returns status ok as JSON and is never cached', async () => {

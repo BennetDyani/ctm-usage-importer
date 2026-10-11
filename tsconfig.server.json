@@ -4,8 +4,8 @@
     "target": "es2023",
     "lib": ["ES2023"],
     "types": ["node"],
-    "module": "esnext",
-    "moduleResolution": "bundler",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
     "noEmit": true,
@@ -15,5 +15,5 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["lib", "api", "db/tests", "vitest.config.ts"]
+  "include": ["lib", "api", "db/tests", "tests"]
 }

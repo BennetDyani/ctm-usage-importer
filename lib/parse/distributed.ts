@@ -1,5 +1,5 @@
-import { warn, type Issue } from './issues'
-import { countDuplicateDateRows, parseDatedTable, type DatedRow } from './table'
+import { warn, type Issue } from './issues.js'
+import { countDuplicateDateRows, parseDatedTable, type DatedRow } from './table.js'
 
 /** File 1: ALL_per_task_<ENV>.csv */
 export type TaskRow = DatedRow<'totalTaskCount' | 'fileTransferTasks' | 'mftFileCount'>
