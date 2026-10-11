@@ -5,19 +5,15 @@
 //   npm run db:test
 // Skipped in a plain `npm test` unless TEST_DATABASE_URL is set.
 import { createHash } from 'node:crypto'
-import { readdirSync, readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import postgres from 'postgres'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { toLoadPayload } from '../../lib/load/payload'
 import { parseFileSet, type FileSetInput } from '../../lib/parse'
+import { resetDatabase, TEST_URL } from './setup'
 
-const DOCKER_URL = 'postgres://postgres:postgres@localhost:54322/postgres'
-const url = process.env.TEST_DATABASE_URL ?? (process.env.npm_lifecycle_event === 'db:test' ? DOCKER_URL : undefined)
-const host = url ? new URL(url).hostname : ''
-if (url && !['localhost', '127.0.0.1', '::1'].includes(host)) {
-  throw new Error(`db tests drop schema ctm; refusing to run against non-local host "${host}"`)
-}
+const url = TEST_URL
 
 const sha = (t: string) => createHash('sha256').update(t, 'utf8').digest('hex')
 const file = (customer: string, name: string) => {
@@ -48,9 +44,7 @@ describe.skipIf(!url)('database (local Postgres)', () => {
   }
 
   beforeAll(async () => {
-    await sql.unsafe('drop schema if exists ctm cascade')
-    const dir = join('db', 'migrations')
-    for (const f of readdirSync(dir).filter((n) => n.endsWith('.sql')).sort()) await sql.unsafe(readFileSync(join(dir, f), 'utf8'))
+    await resetDatabase(sql)
     for (const [c, envs] of [['BANK', ['Dev', 'Prod', 'UAT']], ['DCS', ['PROD', 'QA']]] as const) {
       for (const e of envs) expect((await load(payload(c, e))).status).toBe('loaded')
     }

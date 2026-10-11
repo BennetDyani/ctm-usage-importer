@@ -53,7 +53,7 @@ export default function App() {
           <button className="nav-item" onClick={() => setAskOpen(true)}><AskIcon />Ask</button>
         </nav>
         <div className="rail-foot">
-          <p className="rail-note">Preview built from the sample BANK and DCS files. Uploads and contracts are not saved yet.</p>
+          <p className="rail-note">Uploads are saved to the database. The report still shows the bundled sample files until it is connected.</p>
           <button className="ghost-btn" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}>
             {theme === 'dark' ? <SunIcon /> : <MoonIcon />}{theme === 'dark' ? 'Light' : 'Dark'}

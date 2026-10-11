@@ -8,11 +8,44 @@ Imports Control-M usage exports, stores them exactly, combines environments per 
 
 ```powershell
 npm install          # run on Windows; never copy node_modules between machines
-npm test             # unit tests (Vitest)
-npm run dev          # front end only -> http://localhost:5173 (API shows "offline", expected)
-npx vercel dev       # front end + /api functions together (needs: npx vercel login, once)
-curl.exe http://localhost:3000/api/health
+npm test             # unit tests (Vitest); database tests are skipped unless Docker is running
+npm run dev          # front end AND the api/ functions -> http://localhost:5173
+curl.exe http://localhost:5173/api/health
 ```
+
+`npm run dev` serves the `api/` functions through a small dev-only Vite plugin (`vite.config.ts`), so no Vercel login is needed. The functions read their settings from `.env.local` (git-ignored). To run everything against the Docker database:
+
+```powershell
+npm run db:up
+# one-time: give the local roles a password (local throwaway database only)
+docker exec ctm-postgres psql -U postgres -c "alter role ctm_loader with login password 'local-dev'; alter role ctm_reader with login password 'local-dev';"
+```
+
+Then create `.env.local` containing:
+
+```
+DATABASE_URL_LOADER=postgres://ctm_loader:local-dev@localhost:54322/postgres
+DATABASE_URL_READER=postgres://ctm_reader:local-dev@localhost:54322/postgres
+```
+
+Note: `npm run db:test` resets schema `ctm`, so run the migrations again (or `npm run db:test` once) after `db:up` before using the app locally.
+
+## API
+
+| Route | Method | Role | What it does |
+|---|---|---|---|
+| `/api/health` | GET | none | Liveness check |
+| `/api/upload` | POST multipart | `ctm_loader` | `uploaderId`, `customer`, `environment`, `file1`, `file2`, optional `addons`. Runs `lib/parse`, then `load_file_set` (200 `loaded` / `already_loaded`) or logs the refusal (422 with every reason and line number). 400 bad request, 413 over 4 MB, 500 misconfigured, 503 database unreachable, 504 timeout. |
+| `/api/batches` | GET | `ctm_reader` | Recent upload attempts, newest first (`?limit=` 1–100) |
+
+## Vercel environment variables (Production and Preview)
+
+| Name | Value |
+|---|---|
+| `DATABASE_URL_LOADER` | Supabase **transaction pooler** string (port 6543) with user `ctm_loader.<project-ref>` and that role's password |
+| `DATABASE_URL_READER` | Same, with user `ctm_reader.<project-ref>` and its password |
+
+Copy the pooler string from Supabase (**Connect** button, Transaction pooler), then replace the user `postgres.<project-ref>` with `ctm_loader.<project-ref>` (or `ctm_reader.<project-ref>`) and put in that role's password. Redeploy after changing variables.
 
 ## Database (Supabase Postgres, schema `ctm`)
 
@@ -77,7 +110,7 @@ Never paste these passwords into chat or commit them. They go only into Vercel e
 - [x] Phase 0 — scaffold (Vite + React + TS, Vitest, `/api/health`, security headers, sample data)
 - [x] Phase 1 — parser + unit tests (`lib/parse`, 41 tests incl. match against BMC reference totals)
 - [x] Phase 2 — database (migrations 001–007 applied to Supabase, roles, Docker + 16 integration tests)
-- [ ] Phase 3 — upload API + page
+- [x] Phase 3 — upload API + page (`/api/upload`, `/api/batches`, upload history, 10 end-to-end API tests)
 - [ ] Phase 4 — known-answer SQL tests
 - [ ] Phase 5 — contracts
 - [ ] Phase 6 — report
