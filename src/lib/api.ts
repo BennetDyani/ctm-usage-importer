@@ -55,3 +55,27 @@ export function uploadFileSet(fields: { uploaderId: string; customer: string; en
 }
 
 export const recentBatches = (limit = 10) => call<{ batches: Batch[] }>(`/api/batches?limit=${limit}`)
+
+// ---------------------------------------------------------------- customers & contracts
+export type MetricCode = 'TASKS' | 'SEP' | 'MIPS'
+export interface CustomerRow { id: number; name: string; environments: string[]; firstDay: string | null; lastDay: string | null }
+export interface ContractData {
+  customer: { id: number; name: string }
+  contract: Partial<Record<MetricCode, { value: number; validFrom: string | null; enteredBy: string; enteredAt: string }>>
+  addons: { product: string; licensed: boolean; installedIn: string[] }[]
+  summary: Record<string, { fourthHighest: number | null; fourthDate: string | null; contracted: number | null; headroom: number | null; status: string }>
+}
+export interface ContractSave {
+  customerId: number
+  enteredBy: string
+  validFrom: string | null
+  values: Record<MetricCode, number | null>
+  licensed: string[]
+}
+
+export const listCustomers = () => call<{ customers: CustomerRow[] }>('/api/customers')
+export const getContract = (customerId: number) => call<ContractData>(`/api/contracts?customerId=${customerId}`)
+export const saveContract = (body: ContractSave) =>
+  call<ContractData & { status: 'saved' }>('/api/contracts', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+  })

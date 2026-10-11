@@ -6,7 +6,7 @@ Every number shown in the UI or said by the agent must match the raw CSVs. Groun
 See `03_import_rules.md` (8 tests).
 
 ## Level 2: SQL known-answer tests
-Load both sample sets, then run these checks as a SQL script (`db/tests/known_answers.sql`) that fails loudly on any mismatch.
+Load both sample sets, then run these checks as a SQL script (`db/tests/known_answers.sql`) that fails loudly on any mismatch. **Built in Phase 4:** 20 read-only checks, also run by `npm run db:test`, which additionally proves the script fails (checks 2, 10, 11) when one stored value is changed by 1. Re-upload, supersede and reader-write checks are covered by `db/tests/db.test.ts` and `api.test.ts`.
 
 | Check | Expected |
 |---|---|
