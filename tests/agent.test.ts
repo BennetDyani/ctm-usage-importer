@@ -135,6 +135,28 @@ describe('model client (Groq / Gemini / OpenRouter)', () => {
     vi.stubGlobal('fetch', vi.fn(async () => Response.json({ error: 'nope' }, { status: 401 })))
     await expect(chatClient(keys)(hi, [])).rejects.toThrow(LlmConfigError)
   })
+  it('a short rate limit ("try again in 200ms") is waited out and retried on the same provider', async () => {
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(Response.json({ error: { message: 'Rate limit reached ... Please try again in 200ms.' } }, { status: 429 }))
+      .mockResolvedValueOnce(ok('openai/gpt-oss-120b', { content: 'after waiting' }))
+    vi.stubGlobal('fetch', fetch)
+    const out = await chatClient(keys)(hi, [])
+    expect(out).toMatchObject({ model: 'groq:openai/gpt-oss-120b', message: { content: 'after waiting' } })
+    expect(sent(fetch, 1).url).toContain('groq.com')
+  })
+  it('a long rate limit goes straight to the next provider (no waiting 20 s)', async () => {
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(Response.json({ error: { message: 'Please try again in 20s.' } }, { status: 429 }))
+      .mockResolvedValueOnce(ok('gemini-3.8-flash', { content: 'backup' }))
+    vi.stubGlobal('fetch', fetch)
+    const t = Date.now()
+    expect((await chatClient(keys)(hi, [])).model).toBe('gemini:gemini-3.8-flash')
+    expect(Date.now() - t).toBeLessThan(1000)
+  })
+  it("Gemini's error list format is read, so the reason shows up", async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json([{ error: { code: 429, message: 'You exceeded your current quota' } }], { status: 429 })))
+    await expect(chatClient({ GEMINI_API_KEY: 'k' } as NodeJS.ProcessEnv)(hi, [])).rejects.toThrow('gemini:gemini-3.8-flash HTTP 429 You exceeded your current quota')
+  })
   it('every provider failing is reported as unavailable, naming each failure', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('network down') }))
     await expect(chatClient(keys)(hi, [])).rejects.toThrow(/groq:openai\/gpt-oss-120b network down \| gemini:gemini-3.8-flash network down/)

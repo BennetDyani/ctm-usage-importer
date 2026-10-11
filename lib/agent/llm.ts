@@ -47,7 +47,8 @@ export const PROVIDERS: Record<ProviderName, Provider> = {
   },
 }
 
-export const DEFAULT_PROVIDERS = 'groq:openai/gpt-oss-120b,gemini:gemini-3.8-flash,openrouter:openai/gpt-4.1-mini'
+// Gemini last: its free tier allows only ~20 requests a day for gemini-3.8-flash.
+export const DEFAULT_PROVIDERS = 'groq:openai/gpt-oss-120b,openrouter:openai/gpt-4.1-mini,gemini:gemini-3.8-flash'
 
 // 12 s per provider try: a step that falls back can take 24 s, which still fits Vercel's 60 s limit (see run.ts).
 const STEP_TIMEOUT_MS = 12_000
@@ -83,6 +84,28 @@ interface ApiBody {
   error?: { message?: string } | string
 }
 
+/** Error text from any provider. Gemini's compatibility layer wraps errors in a list: [{ error: { message } }]. */
+function errorText(body: unknown): string {
+  const b = (Array.isArray(body) ? body[0] : body) as ApiBody | null
+  const e = b?.error
+  return (typeof e === 'string' ? e : e?.message ?? '').replace(/\s+/g, ' ').trim()
+}
+
+// A rate limit that clears within this long is worth one wait-and-retry on the same provider
+// (Groq's free tier often says "try again in 360ms"). Longer waits go straight to the next provider.
+const MAX_RETRY_WAIT_MS = 3000
+
+/** How long the provider asks us to wait: Retry-After header, or "try again in 1.5s / 360ms" in the message. */
+export function retryWaitMs(res: Response, text: string): number | null {
+  const header = res.headers.get('retry-after')
+  if (header && /^\d+(\.\d+)?$/.test(header)) return Math.ceil(Number(header) * 1000)
+  const m = /try again in\s+([\d.]+)\s*(ms|s)\b/i.exec(text)
+  if (!m) return null
+  return Math.ceil(Number(m[1]) * (m[2].toLowerCase() === 'ms' ? 1 : 1000))
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
 export function chatClient(env: NodeJS.ProcessEnv = process.env, only?: ProviderName | null): ChatFn {
   const order = routes(env).filter((r) => !only || r.provider === only)
   if (order.length === 0 && only) throw new LlmConfigError(`${only} is not configured on the server (no ${PROVIDERS[only].keyVar}, or not in AGENT_PROVIDERS).`)
@@ -96,19 +119,28 @@ export function chatClient(env: NodeJS.ProcessEnv = process.env, only?: Provider
     let authFailures = 0
     for (const { provider, model, key } of order) {
       const p = PROVIDERS[provider]
+      const send = () => fetch(p.url, {
+        method: 'POST',
+        signal: AbortSignal.timeout(STEP_TIMEOUT_MS),
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model, messages: forProvider(provider, messages), tools, tool_choice: 'auto', ...p.settings(effort) }),
+      })
       try {
-        const res = await fetch(p.url, {
-          method: 'POST',
-          signal: AbortSignal.timeout(STEP_TIMEOUT_MS),
-          headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ model, messages: forProvider(provider, messages), tools, tool_choice: 'auto', ...p.settings(effort) }),
-        })
-        const body = (await res.json().catch(() => null)) as ApiBody | null
+        let res = await send()
+        let raw: unknown = await res.json().catch(() => null)
+        if (res.status === 429) {
+          const wait = retryWaitMs(res, errorText(raw))
+          if (wait !== null && wait <= MAX_RETRY_WAIT_MS) {
+            await sleep(wait + 250)
+            res = await send()
+            raw = await res.json().catch(() => null)
+          }
+        }
+        const body = (Array.isArray(raw) ? null : raw) as ApiBody | null
         const message = body?.choices?.[0]?.message
         if (!res.ok || !message) {
           if (res.status === 401 || res.status === 403) authFailures++
-          const detail = typeof body?.error === 'string' ? body.error : body?.error?.message ?? ''
-          errors.push(`${provider}:${model} HTTP ${res.status} ${detail}`.trim())
+          errors.push(`${provider}:${model} HTTP ${res.status} ${errorText(raw)}`.trim())
           continue
         }
         // Keep only what the next step needs: never the model's private reasoning text.

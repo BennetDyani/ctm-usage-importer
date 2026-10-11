@@ -59,13 +59,23 @@ The agent talks to any OpenAI-compatible provider; `AGENT_PROVIDERS` sets the or
 | Rejected | Preview / experimental models | Google shuts previews within months (e.g. gemini-3-pro-preview lasted under 4). |
 | Rejected | `gemini-2.5-flash` | Now only available to accounts that used it before. |
 
-**Decision rule: the default is whichever scores higher on the 12 evals (`docs/agent_results.md`); speed breaks a tie.** Accuracy beats speed because these answers feed renewal invoices.
+Default order: Groq (fast), then OpenRouter, then Gemini. **Decision rule: the default is whichever scores higher on the 12 evals (`docs/agent_results.md`); speed breaks a tie.** Accuracy beats speed because these answers feed renewal invoices.
 
 Provider details handled in `lib/agent/llm.ts`:
 - Gemini 3 counts thinking tokens toward the output limit, so `max_tokens` is 4000 and `reasoning_effort` is `low` (an empty answer is the symptom if this is too tight).
 - Google strongly recommends keeping Gemini 3's temperature at its default 1.0 ("lower may lead to looping"), so it is not set for Gemini; Groq and OpenRouter use 0.
 - Gemini returns hidden thought signatures (`extra_content`) that must be sent back unchanged; they are stripped before a request goes to another provider.
 - Groq's reasoning text is not requested (`include_reasoning: false`) and is never shown.
+
+### What the first evals showed (11 Oct 2026)
+
+| Provider (free tier) | Finding |
+|---|---|
+| Groq `openai/gpt-oss-120b` | 7 of 8 answered questions correct. 3 hit the free limit of 8,000 tokens per minute (fixed: a short "try again in 360ms" is now waited out and retried). 1 real error: explained the method from memory, backwards ("underestimates"). Fixed with a rule: method questions must call `compare_methods` first. |
+| Google `gemini-3.8-flash` | Could not be evaluated: the free tier allows about 20 requests a day, and one eval run needs about 30. Kept as the last backup. |
+| OpenRouter `openai/gpt-4.1-mini` (as backup) | Correct numbers throughout; once answered about the customer on screen instead of the one named ("dcs"). Fixed with a rule: a customer named in the question wins. |
+
+Lesson: two of the first "failures" were the evaluator's fault (typographic spaces in dates, strict wording), and one whole run tested the wrong deployment (a branch, not `main`). Read every answer, not just the score.
 
 Models are retired every 1-2 years, so none is chosen "to last 3 years". The model name lives in settings, and a swap is proven by re-running the evals.
 

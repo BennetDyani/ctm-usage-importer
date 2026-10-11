@@ -87,7 +87,7 @@ const cases = [
 
 // ---------------------------------------------------------------- run
 const results = []
-const PAUSE_MS = only ? 8000 : 0 // one provider, no backups: give its free-tier per-minute limit room
+const PAUSE_MS = only ? 15000 : 0 // one provider, no backups: give its free-tier per-minute limit room (Groq free: 8,000 tokens/min)
 for (const [i, c] of cases.entries()) {
   if (i > 0 && PAUSE_MS) await new Promise((r) => setTimeout(r, PAUSE_MS))
   process.stdout.write(`Q${i + 1} ${c.q.slice(0, 60)} ... `)

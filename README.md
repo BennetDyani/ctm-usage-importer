@@ -57,7 +57,7 @@ Database errors are reported specifically: wrong database username or password (
 |---|---|
 | `DATABASE_URL_LOADER` | Supabase **transaction pooler** string (port 6543) with user `ctm_loader.<project-ref>` and that role's password |
 | `DATABASE_URL_READER` | Same, with user `ctm_reader.<project-ref>` and its password |
-| `AGENT_PROVIDERS` | Order of models: first = default, rest = backups. Default `groq:openai/gpt-oss-120b,gemini:gemini-3.8-flash`. Providers without a key are skipped. |
+| `AGENT_PROVIDERS` | Order of models: first = default, rest = backups. Default `groq:openai/gpt-oss-120b,openrouter:openai/gpt-4.1-mini,gemini:gemini-3.8-flash`. Providers without a key are skipped. |
 | `GROQ_API_KEY` | From console.groq.com → API Keys |
 | `GEMINI_API_KEY` | From Google AI Studio (aistudio.google.com) → Get API key |
 | `OPENROUTER_API_KEY` | Optional third provider (openrouter.ai → Keys) |
@@ -136,7 +136,7 @@ Never paste these passwords into chat or commit them. They go only into Vercel e
 - [x] Phase 5 — contracts saved to the database (`/api/contracts`, `/api/customers`, verdict from the database, 8 integration tests + 4 validation tests)
 - [x] Phase 6 — report on live data (`/api/report`; the browser does no ranking, it draws what SQL returns) + month-by-month bar chart (busiest day per month, average day tick, partial months marked); 6 integration tests incl. monthly trend vs daily series
 - [x] Phase 7 — analysis agent (`/api/agent`, 8 fixed read-only tools, Groq gpt-oss-120b / Gemini 3.8 Flash / OpenRouter, order set by `AGENT_PROVIDERS`, Ask panel with "Based on" sources; 36 tests incl. a fake-OpenRouter round trip)
-- [ ] Phase 7 evals — run `npm run evals -- <production URL>` with Groq first, then Gemini first; keep the more accurate one as default and commit `docs/agent_results.md`
+- [ ] Phase 7 evals — one provider at a time: `npm run evals -- <production URL> docs/agent_results_<provider>.md <groq|openrouter|gemini>`; commit the result files
 - [ ] Phase 8 — hardening
 - [ ] Phase 9 — diagram, README, video
 
