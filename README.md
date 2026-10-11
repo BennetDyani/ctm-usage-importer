@@ -47,6 +47,7 @@ It checks the four compliance answers (348, 121,970, 181, 11,571) and the add-on
 | `/api/contracts?customerId=` | GET | `ctm_reader` | Saved contract, licensed and installed add-ons, and the current verdict per measure (from `compliance_summary`) |
 | `/api/contracts` | POST JSON | `ctm_loader` | `{ customerId, enteredBy, validFrom?, values: { TASKS, SEP, MIPS }, licensed: [...] }`. `null` = not contracted. 422 with every reason for bad input, 404 unknown customer. |
 | `/api/report?customerId=` | GET | `ctm_reader` | The whole Report page for one customer: verdict per measure (`compliance_summary`), 365 ranked days with each environment (`daily_series`), month-by-month busiest and average day (`monthly_trend`), add-ons, coverage and the saved contract. ~130 KB, ~16 KB compressed. |
+| `/api/agent` | POST JSON | `ctm_reader` | `{ message (1-500 chars), customer?, history? }` -> `{ answer, toolsUsed: [{ tool, source }], model }`. The model only picks one of 8 fixed read-only tools (`lib/agent/tools.ts`); the database does every calculation. 400 bad input, 503 key missing/rejected, 502 both models failed. |
 
 Database errors are reported specifically: wrong database username or password (503 `database_login_failed`), roles swapped or missing a grant (500 `database_permission`), database unreachable (503 `database_unavailable`).
 
@@ -56,6 +57,13 @@ Database errors are reported specifically: wrong database username or password (
 |---|---|
 | `DATABASE_URL_LOADER` | Supabase **transaction pooler** string (port 6543) with user `ctm_loader.<project-ref>` and that role's password |
 | `DATABASE_URL_READER` | Same, with user `ctm_reader.<project-ref>` and its password |
+| `AGENT_PROVIDERS` | Order of models: first = default, rest = backups. Default `groq:openai/gpt-oss-120b,gemini:gemini-3.8-flash`. Providers without a key are skipped. |
+| `GROQ_API_KEY` | From console.groq.com → API Keys |
+| `GEMINI_API_KEY` | From Google AI Studio (aistudio.google.com) → Get API key |
+| `OPENROUTER_API_KEY` | Optional third provider (openrouter.ai → Keys) |
+| `AGENT_REASONING_EFFORT` | Optional: `low` (default), `medium` or `high`. Both default models think before answering. |
+
+Model keys are server-only: never prefix them with `VITE_`, or Vite would put them in the browser bundle. The demo uses free-tier keys with sample data; in production the organisation supplies its own paid keys (paid tiers have stricter data terms), and changing provider or model is a settings change, not a code change.
 
 Copy the pooler string from Supabase (**Connect** button, Transaction pooler), then replace the user `postgres.<project-ref>` with `ctm_loader.<project-ref>` (or `ctm_reader.<project-ref>`) and put in that role's password. Redeploy after changing variables.
 
@@ -85,7 +93,7 @@ Never paste these passwords into chat or commit them. They go only into Vercel e
 | Role | Can do | Used by |
 |---|---|---|
 | `ctm_loader` | execute `load_file_set`, `log_rejected_batch`, `save_contract` only | `/api/upload`, `/api/contracts` |
-| `ctm_reader` | execute the 10 read functions only; read-only; 10 s timeout | `/api/batches`, `/api/customers`, `/api/contracts` (GET), `/api/report`, and the agent (Phase 7) |
+| `ctm_reader` | execute the 10 read functions only; read-only; 10 s timeout | `/api/batches`, `/api/customers`, `/api/contracts` (GET), `/api/report`, `/api/agent` |
 | `anon`, `authenticated` | nothing in `ctm`; the schema is not exposed by the REST API | — |
 
 ## Folder layout
@@ -97,7 +105,8 @@ Never paste these passwords into chat or commit them. They go only into Vercel e
 | `lib/` | Shared server logic, starting with the parser (`lib/parse`, Phase 1) + tests |
 | `db/migrations/`, `db/tests/` | SQL migrations and database integration tests (run with Docker) |
 | `docker-compose.yml` | Local Postgres 17 for `npm run db:test` (development only) |
-| `agent/` | Agent system prompt (Phase 7) |
+| `lib/agent/` | Analysis agent: tools (`tools.ts`), rules (`prompt.ts`), loop (`run.ts`), OpenRouter client with fallback (`llm.ts`) |
+| `scripts/agent-evals.mjs` | Asks the live agent the 12 test-plan questions and writes `docs/agent_results.md` (`npm run evals -- https://your-app.vercel.app`) |
 | `data/samples/` | Untouched sample uploads (BANK: Dev/Prod/UAT, DCS: PROD/QA) |
 | `data/reference/` | BMC's own `_total` files — used only to check our numbers |
 | `docs/` | Design pack |
@@ -126,7 +135,8 @@ Never paste these passwords into chat or commit them. They go only into Vercel e
 - [x] Phase 4 — known-answer SQL tests (`db/tests/known_answers.sql`: 20 read-only checks, runnable on Supabase; a test proves it fails on a 1-unit change)
 - [x] Phase 5 — contracts saved to the database (`/api/contracts`, `/api/customers`, verdict from the database, 8 integration tests + 4 validation tests)
 - [x] Phase 6 — report on live data (`/api/report`; the browser does no ranking, it draws what SQL returns) + month-by-month bar chart (busiest day per month, average day tick, partial months marked); 6 integration tests incl. monthly trend vs daily series
-- [ ] Phase 7 — analysis agent + evals
+- [x] Phase 7 — analysis agent (`/api/agent`, 8 fixed read-only tools, Groq gpt-oss-120b / Gemini 3.8 Flash / OpenRouter, order set by `AGENT_PROVIDERS`, Ask panel with "Based on" sources; 36 tests incl. a fake-OpenRouter round trip)
+- [ ] Phase 7 evals — run `npm run evals -- <production URL>` with Groq first, then Gemini first; keep the more accurate one as default and commit `docs/agent_results.md`
 - [ ] Phase 8 — hardening
 - [ ] Phase 9 — diagram, README, video
 

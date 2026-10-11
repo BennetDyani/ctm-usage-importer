@@ -109,3 +109,12 @@ export interface ReportData {
 }
 
 export const getReport = (customerId: number) => call<ReportData>(`/api/report?customerId=${customerId}`)
+
+// ---------------------------------------------------------------- analysis agent (Phase 7)
+export interface AgentAnswer {
+  answer: string
+  toolsUsed: { tool: string; args: unknown; source: string; ok: boolean }[]
+  model: string | null
+}
+export const askAgent = (body: { message: string; customer?: string; history: { role: 'user' | 'assistant'; content: string }[] }) =>
+  call<AgentAnswer>('/api/agent', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })

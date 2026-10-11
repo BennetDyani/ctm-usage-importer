@@ -32,6 +32,11 @@ export default function ReportPage({ customerName, onCustomer, onEditContract, o
   const list = customers?.kind === 'ok' ? customers.data.customers : []
   const current = list.find((c) => c.name.toLowerCase() === customerName.toLowerCase()) ?? list[0]
 
+  // When nothing is picked yet, the first customer is shown: tell the app, so the Ask panel knows the context.
+  useEffect(() => {
+    if (current && current.name !== customerName) onCustomer(current.name)
+  }, [current?.name]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Fetch the report whenever the customer changes. The previous report stays on screen (dimmed) meanwhile.
   useEffect(() => {
     if (!current) return

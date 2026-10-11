@@ -9,7 +9,7 @@ import { GET as customers } from '../../api/customers.js'
 import { GET as report } from '../../api/report.js'
 import { POST as upload } from '../../api/upload.js'
 import { closeAll } from '../../lib/server/db.js'
-import { sumOfPerEnvFourths } from '../../src/lib/compliance.js'
+import { sumOfPerEnvFourths } from '../../lib/shared/ranking.js'
 import { resetDatabase, roleUrls, TEST_URL } from './setup.js'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

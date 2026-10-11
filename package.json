@@ -14,7 +14,8 @@
     "preview:data": "node scripts/build-preview.mjs",
     "db:up": "docker compose up -d --wait db",
     "db:test": "vitest run db/tests",
-    "db:down": "docker compose down -v"
+    "db:down": "docker compose down -v",
+    "evals": "node scripts/agent-evals.mjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans": "^5.3.0",
