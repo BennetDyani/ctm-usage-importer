@@ -18,7 +18,7 @@ export type ChatFn = (messages: ChatMessage[], tools: unknown[]) => Promise<Chat
 export class LlmConfigError extends Error {} // no usable key at all: retrying won't help
 export class LlmUnavailableError extends Error {} // every provider failed this step
 
-type ProviderName = 'groq' | 'gemini' | 'openrouter'
+export type ProviderName = 'groq' | 'gemini' | 'openrouter'
 interface Provider {
   url: string
   keyVar: string
@@ -83,8 +83,9 @@ interface ApiBody {
   error?: { message?: string } | string
 }
 
-export function chatClient(env: NodeJS.ProcessEnv = process.env): ChatFn {
-  const order = routes(env)
+export function chatClient(env: NodeJS.ProcessEnv = process.env, only?: ProviderName | null): ChatFn {
+  const order = routes(env).filter((r) => !only || r.provider === only)
+  if (order.length === 0 && only) throw new LlmConfigError(`${only} is not configured on the server (no ${PROVIDERS[only].keyVar}, or not in AGENT_PROVIDERS).`)
   if (order.length === 0) {
     throw new LlmConfigError(`No model key is set. Add one of ${Object.values(PROVIDERS).map((p) => p.keyVar).join(', ')}.`)
   }
