@@ -40,11 +40,13 @@ const dcs = await getJson(`/api/report?customerId=${id('DCS')}`)
 const dcsSep = dcs.metrics.SEP.summary // { fourthHighest, contracted, headroom, status }
 
 const fmt = (n) => new Intl.NumberFormat('en-GB').format(n)
+// Models often write typographic characters (7\u202fAug, 4th\u2011highest, can’t). Compare plain text.
+const plain = (s) => String(s).normalize('NFKC').replace(/[\u00a0\u2007\u2009\u202f]/g, ' ').replace(/[\u2010\u2011\u2012\u2013]/g, '-').replace(/[\u2018\u2019]/g, "'")
 const has = (a, ...xs) => xs.every((x) => (x instanceof RegExp ? x.test(a) : a.includes(x)))
 const used = (res, ...tools) => tools.some((t) => (res.body.toolsUsed ?? []).some((u) => u.tool === t && u.ok))
 
 const sepExpect = dcsSep.contracted === null
-  ? { note: 'no SEP contract saved for DCS', check: (a) => has(a, '181') && /no (contract|contracted)|not (been )?(set|saved|contracted)/i.test(a) }
+  ? { note: 'no SEP contract saved for DCS', check: (a) => has(a, '181') && /no (\w+ )?(contract|contracted)|not (been )?(set|saved|contracted|recorded)|isn't contracted/i.test(a) }
   : dcsSep.headroom >= 0
     ? { note: `SEP contract ${fmt(dcsSep.contracted)}: within, headroom ${fmt(dcsSep.headroom)}`, check: (a) => has(a, '181', fmt(dcsSep.headroom)) && /within|yes|below|under/i.test(a) }
     : { note: `SEP contract ${fmt(dcsSep.contracted)}: over by ${fmt(-dcsSep.headroom)}`, check: (a) => has(a, '181', fmt(-dcsSep.headroom)) && /over|exceed|above|no\b/i.test(a) }
@@ -92,7 +94,7 @@ for (const [i, c] of cases.entries()) {
       : []
     res = await ask(c.q, c.customer, history)
     answer = res.status === 200 ? res.body.answer : `HTTP ${res.status}: ${res.body.message ?? ''}`
-    pass = res.status === 200 && c.check(answer, res)
+    pass = res.status === 200 && c.check(plain(answer), res)
   }
   results.push({ ...c, n: i + 1, answer, pass, res })
   console.log(pass ? 'PASS' : 'FAIL', `(${(res.ms / 1000).toFixed(1)} s)`)
@@ -105,13 +107,13 @@ const esc = (s) => String(s).replace(/\|/g, '\\|').replace(/\n/g, ' ')
 const md = `# Agent results
 
 Run ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC against ${base}
-Model(s) that answered: ${models.join(', ') || 'none'}
+Answered by: ${models.map((m) => `${m} (${results.filter((r) => r.res.body.model === m).length})`).join(', ') || 'none'}. The first provider in AGENT_PROVIDERS is the one being tested; any others are backups that stepped in (usually a free-tier rate limit).
 **${passed} of ${results.length} passed.** Ground truth: docs/01 and the deployment's own \`/api/report\`.
 Regenerate with \`node scripts/agent-evals.mjs ${base} ${outFile}\`.
 
-| # | Question | Expected | Result | Time |
-|---|---|---|---|---|
-${results.map((r) => `| ${r.n} | ${esc(r.q)} | ${esc(r.expected)} | ${r.pass ? 'PASS' : '**FAIL**'} | ${(r.res.ms / 1000).toFixed(1)} s |`).join('\n')}
+| # | Question | Expected | Result | Answered by | Time |
+|---|---|---|---|---|---|
+${results.map((r) => `| ${r.n} | ${esc(r.q)} | ${esc(r.expected)} | ${r.pass ? 'PASS' : '**FAIL**'} | ${r.res.body.model ?? '-'} | ${(r.res.ms / 1000).toFixed(1)} s |`).join('\n')}
 
 ## Answers
 
@@ -119,6 +121,7 @@ ${results.map((r) => `### ${r.n}. ${r.q}
 ${r.customer ? `Asked from the ${r.customer} report.${r.followsUp !== undefined ? ` Follows question ${r.followsUp + 1}.` : ''}\n` : ''}
 > ${esc(r.answer)}
 
+- Answered by: ${r.res.body.model ?? '-'}
 - Tools: ${(r.res.body.toolsUsed ?? []).map((t) => `\`${t.tool}\`${t.ok ? '' : ' (rejected arguments)'}`).join(', ') || 'none'}
 - Based on: ${[...new Set((r.res.body.toolsUsed ?? []).filter((t) => t.ok).map((t) => t.source))].join('; ') || 'nothing'}
 - Expected: ${r.expected}
