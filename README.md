@@ -30,6 +30,12 @@ DATABASE_URL_READER=postgres://ctm_reader:local-dev@localhost:54322/postgres
 
 Note: `npm run db:test` resets schema `ctm`, so run the migrations again (or `npm run db:test` once) after `db:up` before using the app locally.
 
+## Verify the live database (known answers)
+
+`db/tests/known_answers.sql` is read-only and safe on production. In Supabase, open the **SQL editor**, paste the whole file and click **Run**. You get a table of 20 checks (expected, actual, PASS/FAIL). If anything is wrong, the run stops with an error that names the failed checks.
+
+It checks the four compliance answers (348, 121,970, 181, 11,571) and the add-on figures; that BANK matches BMC's own total files on all 365 days (day-by-day fingerprint); that every stored file still matches its SHA-256; and that the database roles are still locked down. `npm run db:test` runs the same script automatically, and also proves it fails when a single stored value changes by 1.
+
 ## API
 
 | Route | Method | Role | What it does |
@@ -37,6 +43,11 @@ Note: `npm run db:test` resets schema `ctm`, so run the migrations again (or `np
 | `/api/health` | GET | none | Liveness check |
 | `/api/upload` | POST multipart | `ctm_loader` | `uploaderId`, `customer`, `environment`, `file1`, `file2`, optional `addons`. Runs `lib/parse`, then `load_file_set` (200 `loaded` / `already_loaded`) or logs the refusal (422 with every reason and line number). 400 bad request, 413 over 4 MB, 500 misconfigured, 503 database unreachable, 504 timeout. |
 | `/api/batches` | GET | `ctm_reader` | Recent upload attempts, newest first (`?limit=` 1–100) |
+| `/api/customers` | GET | `ctm_reader` | Customers with data, their environments and date range |
+| `/api/contracts?customerId=` | GET | `ctm_reader` | Saved contract, licensed and installed add-ons, and the current verdict per measure (from `compliance_summary`) |
+| `/api/contracts` | POST JSON | `ctm_loader` | `{ customerId, enteredBy, validFrom?, values: { TASKS, SEP, MIPS }, licensed: [...] }`. `null` = not contracted. 422 with every reason for bad input, 404 unknown customer. |
+
+Database errors are reported specifically: wrong database username or password (503 `database_login_failed`), roles swapped or missing a grant (500 `database_permission`), database unreachable (503 `database_unavailable`).
 
 ## Vercel environment variables (Production and Preview)
 
@@ -111,8 +122,8 @@ Never paste these passwords into chat or commit them. They go only into Vercel e
 - [x] Phase 1 — parser + unit tests (`lib/parse`, 41 tests incl. match against BMC reference totals)
 - [x] Phase 2 — database (migrations 001–007 applied to Supabase, roles, Docker + 16 integration tests)
 - [x] Phase 3 — upload API + page (`/api/upload`, `/api/batches`, upload history, 10 end-to-end API tests)
-- [ ] Phase 4 — known-answer SQL tests
-- [ ] Phase 5 — contracts
+- [x] Phase 4 — known-answer SQL tests (`db/tests/known_answers.sql`: 20 read-only checks, runnable on Supabase; a test proves it fails on a 1-unit change)
+- [x] Phase 5 — contracts saved to the database (`/api/contracts`, `/api/customers`, verdict from the database, 8 integration tests + 4 validation tests)
 - [ ] Phase 6 — report
 - [ ] Phase 7 — analysis agent + evals
 - [ ] Phase 8 — hardening
