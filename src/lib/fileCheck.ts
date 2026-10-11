@@ -1,68 +1,58 @@
-// Browser-side file checks (fast feedback only; the server re-checks everything in Phase 3).
-// Rules from docs/03_import_rules.md.
+// Browser side of the upload: reads a chosen file and runs it through the SAME rulebook the
+// server uses (lib/parse). The browser check is for fast feedback; the server re-checks.
+import {
+  decodeUtf8, envFromFileName, parseEndpointsFile, parseFileSet, parseTasksFile,
+  type FileSetInput, type Issue, type ParsedFileSet,
+} from '../../lib/parse'
+
 export type Kind = 'tasks' | 'endpoints'
 
 export interface FileCheck {
   file: File
+  text: string
   env: string | null
   rows: number
   days: number
   first?: string
   last?: string
   errors: string[]
+  warnings: string[]
 }
 
-const TASKS = /^ALL_per_task_([A-Za-z0-9-]+)\.csv$/i
-const ENDPOINTS = /^ALL([A-Za-z0-9-]+)\.csv$/i
-
-export function envFromName(name: string, kind: Kind): string | null {
-  if (kind === 'tasks') return TASKS.exec(name)?.[1] ?? null
-  if (TASKS.test(name) || name.toUpperCase().startsWith('ALL_')) return null
-  return ENDPOINTS.exec(name)?.[1] ?? null
-}
+const describe = (i: Issue) => (i.line ? `Line ${i.line}: ${i.message}` : i.message)
 
 export async function checkFile(file: File, kind: Kind): Promise<FileCheck> {
+  const text = decodeUtf8(new Uint8Array(await file.arrayBuffer()))
+  const env = envFromFileName(file.name, kind === 'tasks' ? 'dist_tasks' : 'dist_endpoints')
   const errors: string[] = []
-  const env = envFromName(file.name, kind)
   if (!env) {
     errors.push(kind === 'tasks'
       ? 'Name must look like ALL_per_task_<ENV>.csv'
       : 'Name must look like ALL<ENV>.csv, for example ALLPROD.csv')
   }
-  if (file.size > 2 * 1024 * 1024) errors.push('File is larger than 2 MB')
-
-  const text = (await file.text()).replace(/^﻿/, '')
-  const lines = text.split(/\r?\n/)
-  const header = lines.findIndex((l) => l.startsWith('Date,'))
-  const required = kind === 'tasks' ? ['Total Task Count', 'File Transfer Tasks', 'MFT File Count'] : ['Endpoint Count']
-  if (header < 0) errors.push('No header row starting with "Date" was found')
-  else {
-    const cols = lines[header].split(',')
-    for (const c of required) if (!cols.includes(c)) errors.push(`Missing column "${c}"`)
+  if (text === null) {
+    return { file, text: '', env, rows: 0, days: 0, errors: [...errors, 'The file is not valid UTF-8 text.'], warnings: [] }
   }
-
-  const dates = new Set<string>()
-  let rows = 0
-  for (let i = header + 1; header >= 0 && i < lines.length; i++) {
-    const l = lines[i].trim()
-    if (!l) continue
-    const cells = l.split(',')
-    if (!/^\d{4}\/\d{2}\/\d{2}$/.test(cells[0])) {
-      errors.push(`Line ${i + 1}: "${cells[0]}" is not a date (YYYY/MM/DD)`)
-      continue
-    }
-    if (cells.slice(1).some((c) => !/^\d+$/.test(c))) errors.push(`Line ${i + 1}: values must be whole numbers`)
-    rows++
-    dates.add(cells[0])
-  }
-  if (header >= 0 && rows === 0) errors.push('No data rows after the header')
-  const sorted = [...dates].sort()
+  const parsed = kind === 'tasks' ? parseTasksFile(text) : parseEndpointsFile(text)
+  const dates = [...new Set(parsed.rows.map((r) => r.usageDate))].sort()
   return {
-    file, env, rows, days: dates.size,
-    first: sorted[0]?.replaceAll('/', '-'), last: sorted.at(-1)?.replaceAll('/', '-'),
-    errors: errors.slice(0, 5),
+    file, text, env,
+    rows: parsed.rows.length,
+    days: dates.length,
+    first: dates[0],
+    last: dates.at(-1),
+    errors: [...errors, ...parsed.issues.filter((i) => i.severity === 'error').map(describe)].slice(0, 5),
+    warnings: parsed.issues.filter((i) => i.severity === 'warning').map(describe),
   }
 }
 
-export const sameEnv = (a?: string | null, b?: string | null) =>
-  !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase()
+/** Full rulebook over the whole set, exactly as the server will run it. */
+export function checkSet(input: Omit<FileSetInput, 'file1' | 'file2'>, tasks: FileCheck, endpoints: FileCheck): ParsedFileSet {
+  return parseFileSet({
+    ...input,
+    file1: { name: tasks.file.name, text: tasks.text, size: tasks.file.size },
+    file2: { name: endpoints.file.name, text: endpoints.text, size: endpoints.file.size },
+  })
+}
+
+export { sameEnv } from '../../lib/parse'

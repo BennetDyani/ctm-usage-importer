@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { AlertIcon, CheckIcon, DotIcon } from '../components/Icons'
-import { checkFile, sameEnv, type FileCheck, type Kind } from '../lib/fileCheck'
+import { checkFile, checkSet, sameEnv, type FileCheck, type Kind } from '../lib/fileCheck'
+import type { ParsedFileSet } from '../../lib/parse'
 import { fmt, fmtDate } from '../lib/format'
 import { CUSTOMERS } from '../lib/types'
 
@@ -10,7 +11,7 @@ export default function UploadPage() {
   const [env, setEnv] = useState('')
   const [tasks, setTasks] = useState<FileCheck | null>(null)
   const [endpoints, setEndpoints] = useState<FileCheck | null>(null)
-  const [submitted, setSubmitted] = useState(false)
+  const [result, setResult] = useState<ParsedFileSet | null>(null)
 
   const promptsDone = uploader.trim() && customer.trim() && env.trim()
   const envMismatch = [tasks?.env, endpoints?.env].filter(Boolean).some((e) => env.trim() && !sameEnv(e, env))
@@ -42,16 +43,16 @@ export default function UploadPage() {
             <div className="fields-3">
               <div className="field">
                 <label htmlFor="uploader">Uploader ID</label>
-                <input id="uploader" className="input" value={uploader} onChange={(e) => setUploader(e.target.value)} autoComplete="username" />
+                <input id="uploader" className="input" value={uploader} onChange={(e) => { setUploader(e.target.value); setResult(null) }} autoComplete="username" />
               </div>
               <div className="field">
                 <label htmlFor="cust">Customer name</label>
-                <input id="cust" className="input" list="customers" value={customer} onChange={(e) => setCustomer(e.target.value)} />
+                <input id="cust" className="input" list="customers" value={customer} onChange={(e) => { setCustomer(e.target.value); setResult(null) }} />
                 <datalist id="customers">{CUSTOMERS.map((c) => <option key={c.name} value={c.name} />)}</datalist>
               </div>
               <div className="field">
                 <label htmlFor="env">Environment</label>
-                <input id="env" className="input" value={env} onChange={(e) => setEnv(e.target.value)} placeholder="For example PROD" aria-invalid={envMismatch || undefined} />
+                <input id="env" className="input" value={env} onChange={(e) => { setEnv(e.target.value); setResult(null) }} placeholder="For example PROD" aria-invalid={envMismatch || undefined} />
                 <span className="hint">Must match the name inside both file names.</span>
               </div>
             </div>
@@ -62,7 +63,7 @@ export default function UploadPage() {
           <div>
             <h2 id="files">Choose the two files</h2>
             <div className="pair">
-              <Slot kind="tasks" title="File 1: tasks" pattern={`ALL_per_task_${env.trim() || '<ENV>'}.csv`} value={tasks} onChange={setTasks} expectedEnv={env} />
+              <Slot kind="tasks" title="File 1: tasks" pattern={`ALL_per_task_${env.trim() || '<ENV>'}.csv`} value={tasks} onChange={(v) => { setTasks(v); setResult(null) }} expectedEnv={env} />
               <div className="pair-link" aria-live="polite">
                 <span>Environment</span>
                 <span className={`env-chip ${tasks?.env && endpoints?.env ? (pairMismatch ? 'bad' : 'ok') : ''}`}>
@@ -70,7 +71,7 @@ export default function UploadPage() {
                 </span>
                 {pairMismatch && <span style={{ color: 'var(--bad-text)' }}>Files don't match</span>}
               </div>
-              <Slot kind="endpoints" title="File 2: server endpoints" pattern={`ALL${env.trim() || '<ENV>'}.csv`} value={endpoints} onChange={setEndpoints} expectedEnv={env} />
+              <Slot kind="endpoints" title="File 2: server endpoints" pattern={`ALL${env.trim() || '<ENV>'}.csv`} value={endpoints} onChange={(v) => { setEndpoints(v); setResult(null) }} expectedEnv={env} />
             </div>
             <p className="optional-slot">The add-ons file (addons_&lt;ENV&gt;.csv) is optional and can be added after the main pair is loaded.</p>
           </div>
@@ -90,18 +91,10 @@ export default function UploadPage() {
               ))}
             </ul>
             <div className="form-actions" style={{ marginTop: '1.25rem' }}>
-              <button className="btn" disabled={!ready} onClick={() => setSubmitted(true)}>Upload files</button>
+              <button className="btn" disabled={!ready} onClick={() => setResult(checkSet({ uploaderId: uploader, customer, environment: env }, tasks!, endpoints!))}>Upload files</button>
               {!ready && <span className="muted" style={{ fontSize: 'var(--step--1)' }}>Finish the checks above to upload.</span>}
             </div>
-            {submitted && ready && tasks && endpoints && (
-              <div className="result good" role="status">
-                <h3>Files passed every check</h3>
-                <p className="num" style={{ fontSize: 'var(--step--1)', color: 'var(--ink-2)' }}>
-                  {customer.trim()} {env.trim()}: {fmt(tasks.rows)} task rows and {fmt(endpoints.rows)} endpoint rows, {fmtDate(tasks.first!)} to {fmtDate(tasks.last!)}.
-                  Saving to the database isn't switched on in this preview yet.
-                </p>
-              </div>
-            )}
+            {result && <SetResult result={result} customer={customer.trim()} />}
           </div>
         </section>
       </div>
@@ -140,7 +133,40 @@ function Slot({ kind, title, pattern, value, onChange, expectedEnv }: {
             </span>
           )}
           {value.errors.map((e) => <span key={e} className="file-error">{e}</span>)}
+          {value.errors.length === 0 && value.warnings.map((w) => <span key={w} className="file-warn">{w}</span>)}
           {wrongEnv && <span className="file-error">This file is for {value.env}, but the environment is {expectedEnv.trim()}.</span>}
+        </>
+      )}
+    </div>
+  )
+}
+
+function SetResult({ result, customer }: { result: ParsedFileSet; customer: string }) {
+  const errors = result.issues.filter((i) => i.severity === 'error')
+  const warnings = result.issues.filter((i) => i.severity === 'warning')
+  const where = (i: ParsedFileSet['issues'][number]) =>
+    [i.file === 'file1' ? 'File 1' : i.file === 'file2' ? 'File 2' : i.file === 'addons' ? 'Add-ons' : '', i.line ? `line ${i.line}` : '']
+      .filter(Boolean).join(', ')
+  return (
+    <div className={`result ${result.ok ? 'good' : 'bad'}`} role="status">
+      <h3>{result.ok ? 'Files passed every check' : 'These files can\'t be uploaded'}</h3>
+      {result.ok && result.summary.firstDay && (
+        <p className="num result-text">
+          {customer} {result.environment}: {fmt(result.summary.taskRows)} task rows and {fmt(result.summary.endpointRows)} endpoint rows,
+          {' '}{fmtDate(result.summary.firstDay)} to {fmtDate(result.summary.lastDay!)}. Saving to the database isn't switched on in this preview yet.
+        </p>
+      )}
+      {errors.length > 0 && (
+        <ul className="issue-list">
+          {errors.map((i, k) => <li key={k}><strong>{where(i) || 'Upload'}</strong> {i.message}</li>)}
+        </ul>
+      )}
+      {warnings.length > 0 && (
+        <>
+          <p className="result-text">{result.ok ? 'Stored with these notes:' : 'Also noted:'}</p>
+          <ul className="issue-list muted">
+            {warnings.map((i, k) => <li key={k}>{where(i) && <strong>{where(i)}</strong>} {i.message}</li>)}
+          </ul>
         </>
       )}
     </div>

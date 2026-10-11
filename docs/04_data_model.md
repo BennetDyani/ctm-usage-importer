@@ -135,6 +135,7 @@ language sql stable security definer set search_path = '' as $$
          c.contracted_value,
          c.contracted_value - a.fourth,
          case when a.n < 4 then 'not_enough_data'
+              when a.peak = 0 then 'no_usage'            -- A18
               when c.contracted_value is null then 'no_contract'
               when a.fourth > c.contracted_value then 'over_contract'
               else 'within_contract' end
@@ -173,4 +174,6 @@ $$;
 
 ## Migrations (`db/migrations/`)
 
-`001_schema.sql`, `002_views.sql`, `003_load_functions.sql`, `004_read_functions.sql`, `005_roles.sql`, `006_seed_addon_products.sql`.
+`001_schema.sql`, `002_views.sql`, `003_load_functions.sql`, `004_read_functions.sql`, `005_roles.sql`, `006_seed_addon_products.sql`, `007_fk_indexes.sql`.
+
+The SQL above is a summary; the migrations are the source of truth. As built (Phase 2), the read functions are `report_window`, `daily_series`, `compliance_summary`, `top_days`, `monthly_trend`, `addon_usage`, `coverage`, `list_customers`, `get_contract` and `recent_batches`. The contract screen writes through `save_contract(jsonb)`. Re-uploading a file that was superseded earlier brings it back (`reactivated`) instead of storing it twice. Verified by `db/tests/db.test.ts` (16 tests) and applied to Supabase with matching fingerprints for functions, columns and grants.

@@ -11,10 +11,14 @@
     "test:watch": "vitest",
     "typecheck": "tsc -b",
     "lint": "oxlint",
-    "preview:data": "node scripts/build-preview.mjs"
+    "preview:data": "node scripts/build-preview.mjs",
+    "db:up": "docker compose up -d --wait db",
+    "db:test": "vitest run db/tests",
+    "db:down": "docker compose down -v"
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans": "^5.3.0",
+    "postgres": "3.4.9",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },

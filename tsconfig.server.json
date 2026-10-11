@@ -15,5 +15,5 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["lib", "api", "vitest.config.ts"]
+  "include": ["lib", "api", "db/tests", "vitest.config.ts"]
 }
