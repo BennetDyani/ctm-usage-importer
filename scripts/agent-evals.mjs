@@ -1,7 +1,9 @@
 // Agent evals (docs/08 level 3): ask the live agent the 12 test-plan questions, check each answer
 // against the ground truth read from the same deployment, and write docs/agent_results.md.
 //
-//   node scripts/agent-evals.mjs https://your-app.vercel.app [output file, default docs/agent_results.md]
+//   node scripts/agent-evals.mjs https://your-app.vercel.app [output file] [groq | gemini | openrouter]
+//   The last argument tests ONE provider with no backups, so its score is its own. Leave it out to test
+//   the normal setup (default provider + backups). No Vercel settings need to change.
 //
 // Read-only: it never uploads or changes contracts. Costs a few US cents per full run
 // (12 questions x 2-3 model steps x ~3,000 tokens each). Free tiers cover it; their rate limits may
@@ -12,6 +14,11 @@ import { dirname } from 'node:path'
 
 const base = (process.argv[2] ?? '').replace(/\/$/, '')
 const outFile = process.argv[3] ?? 'docs/agent_results.md'
+const only = process.argv[4]
+if (only && !['groq', 'gemini', 'openrouter'].includes(only)) {
+  console.error('The provider must be groq, gemini or openrouter.')
+  process.exit(2)
+}
 if (!/^https?:\/\//.test(base)) {
   console.error('Usage: node scripts/agent-evals.mjs https://your-app.vercel.app')
   process.exit(2)
@@ -24,7 +31,7 @@ const getJson = async (path) => {
 }
 async function ask(message, customer, history = []) {
   const t = Date.now()
-  const r = await fetch(`${base}/api/agent`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message, customer, history }) })
+  const r = await fetch(`${base}/api/agent`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message, customer, history, ...(only ? { only } : {}) }) })
   const body = await r.json().catch(() => ({}))
   return { status: r.status, body, ms: Date.now() - t }
 }
@@ -80,7 +87,9 @@ const cases = [
 
 // ---------------------------------------------------------------- run
 const results = []
+const PAUSE_MS = only ? 8000 : 0 // one provider, no backups: give its free-tier per-minute limit room
 for (const [i, c] of cases.entries()) {
+  if (i > 0 && PAUSE_MS) await new Promise((r) => setTimeout(r, PAUSE_MS))
   process.stdout.write(`Q${i + 1} ${c.q.slice(0, 60)} ... `)
   let res, pass, answer
   if (c.special === 'limits') {
@@ -107,9 +116,10 @@ const esc = (s) => String(s).replace(/\|/g, '\\|').replace(/\n/g, ' ')
 const md = `# Agent results
 
 Run ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC against ${base}
-Answered by: ${models.map((m) => `${m} (${results.filter((r) => r.res.body.model === m).length})`).join(', ') || 'none'}. The first provider in AGENT_PROVIDERS is the one being tested; any others are backups that stepped in (usually a free-tier rate limit).
+${only ? `**Provider under test: ${only} only (no backups), so every answer below is its own.**` : 'Normal setup: default provider plus backups.'}
+Answered by: ${models.map((m) => `${m} (${results.filter((r) => r.res.body.model === m).length})`).join(', ') || 'none'}. ${only ? '' : 'Any model other than the default is a backup that stepped in (usually a free-tier rate limit).'}
 **${passed} of ${results.length} passed.** Ground truth: docs/01 and the deployment's own \`/api/report\`.
-Regenerate with \`node scripts/agent-evals.mjs ${base} ${outFile}\`.
+Regenerate with \`node scripts/agent-evals.mjs ${base} ${outFile}${only ? ` ${only}` : ''}\`.
 
 | # | Question | Expected | Result | Answered by | Time |
 |---|---|---|---|---|---|

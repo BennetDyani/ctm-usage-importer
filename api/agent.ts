@@ -18,7 +18,7 @@ export async function POST(request: Request): Promise<Response> {
   if (!v.ok) return json({ error: 'bad_request', message: v.reason }, 400)
 
   try {
-    const llm = chatClient()
+    const llm = chatClient(process.env, v.only)
     const sql = db('reader')
     // Only pass the page's customer to the model if it really exists (it ends up in the system prompt).
     let inView: string | null = null
@@ -33,6 +33,7 @@ export async function POST(request: Request): Promise<Response> {
   } catch (err) {
     if (err instanceof LlmConfigError) {
       console.error('[agent]', err.message)
+      if (v.only) return json({ error: 'agent_not_configured', message: err.message }, 503)
       return json({ error: 'agent_not_configured', message: "The agent isn't set up on the server yet: no working model key (GROQ_API_KEY, GEMINI_API_KEY or OPENROUTER_API_KEY)." }, 503)
     }
     if (err instanceof LlmUnavailableError) {

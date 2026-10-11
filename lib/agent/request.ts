@@ -4,7 +4,10 @@ import type { Turn } from './run.js'
 export const MAX_MESSAGE = 500
 const MAX_TURN = 2000
 
-type Checked = { ok: true; message: string; customer: string | null; history: Turn[] } | { ok: false; reason: string }
+export const PROVIDER_NAMES = ['groq', 'gemini', 'openrouter'] as const
+export type ProviderName = (typeof PROVIDER_NAMES)[number]
+
+type Checked = { ok: true; message: string; customer: string | null; history: Turn[]; only: ProviderName | null } | { ok: false; reason: string }
 
 export function checkBody(body: unknown): Checked {
   const b = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>
@@ -22,5 +25,14 @@ export function checkBody(body: unknown): Checked {
     }
     history.push({ role: r.role, content: r.content })
   }
-  return { ok: true, message, customer, history }
+  // "only" lets the eval script test one provider at a time without changing Vercel settings.
+  // It can only narrow the providers already configured on the server; it can't add a provider or a key.
+  let only: ProviderName | null = null
+  if (b.only !== undefined && b.only !== null) {
+    if (typeof b.only !== 'string' || !(PROVIDER_NAMES as readonly string[]).includes(b.only)) {
+      return { ok: false, reason: `only must be one of ${PROVIDER_NAMES.join(', ')}.` }
+    }
+    only = b.only as ProviderName
+  }
+  return { ok: true, message, customer, history, only }
 }
